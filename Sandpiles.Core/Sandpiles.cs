@@ -9,7 +9,7 @@ namespace Sandpiles.Core
         public int[] DecayProbabilities { get; }
         public int[] GrowthProbabilities { get; }
         public int[,] Piles { get; protected set; }
-        protected int[,] Diff;
+        public int[,] Diff { get; protected set; }
 
         protected Random Random;
 
@@ -21,7 +21,7 @@ namespace Sandpiles.Core
            Random = new Random((int)DateTime.Now.Ticks);
         }
         protected int GeneratePile(int row, int col) => Random.Next(0, 55);
-        public void InitPiles(Func<int, int, int> generator = null) {
+        public void Init(Func<int, int, int> generator = null) {
             Piles = new int[Width, Height];
             Diff = new int[Width, Height];
             generator = generator ?? GeneratePile;
@@ -32,25 +32,38 @@ namespace Sandpiles.Core
             }
         }
 
-        public void ComputeRound() {
+        public void ComputeRound(Action callback = null) {
+            var growthCount = 0;
+            var decayCount = 0;
+            var netChange = 0;
+            for (var i = 0; i < Width; i++)
+            {
+                for (var j = 0; j < Height; j++)
+                {
+                    Diff[i, j] = 0;
+                }
+            }
             for (var i = 0; i < Width; i++) {
                 for (var j = 0; j < Height; j++) {
                     var val = Piles[i, j];
-                    if (Random.Next(0, DecayProbabilities[val]) == 0) {
+                    if (val > 54) val = 54;
+                    if (Random.Next(1, 20_000_001) <= DecayProbabilities[val]) {
+                        decayCount++;
                         Decay(i, j);
                     }
-                    else if (Random.Next(0, GrowthProbabilities[val]) == 0) {
+                    else if (Random.Next(1, 20_000_001) <= GrowthProbabilities[val]) {
+                        growthCount++;
                         Grow(i, j);
                     }
-                    Diff[i, j] = 0;
                 }
             }
             for (var i = 0; i < Width; i++) {
                 for (var j = 0; j < Height; j++) {
+                    netChange += Diff[i, j];
                     Piles[i, j] += Diff[i, j];
-                    Diff[i, j] = 0;
                 }
             }
+            Console.WriteLine($"Growths = {growthCount}, Decays = {decayCount}, Net Change = {netChange}");
         }
 
         private void Grow(int i, int j) {
